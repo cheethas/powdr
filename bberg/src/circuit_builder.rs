@@ -40,14 +40,14 @@ pub(crate) fn analyzed_to_cpp<F: FieldElement>(
         .find(|col_name| col_name.0.contains("FIRST"))
         .expect("PIL file must contain a fixed column named FIRST")
         .0
-        .replace(".", "_");
+        .replace('.', "_");
 
     let last_col = fixed
         .iter()
         .find(|col_name| col_name.0.contains("LAST"))
         .expect("PIL file must contain a fixed column named LAST")
         .0
-        .replace(".", "_");
+        .replace('.', "_");
 
     // Inlining step to remove the intermediate poly definitions
     let analyzed_identities = inline_intermediate_polynomials(analyzed);
