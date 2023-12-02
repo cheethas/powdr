@@ -43,6 +43,6 @@ pub fn main() {
 
 The function `get_prover_input` reads a number from the list supplied with `-i`.
 
-This is just a first mechanism to provide access to the outside world.
+This is just the first mechanism to provide access to the outside world.
 The plan is to be able to call arbitrary user-defined `ffi` functions that will translate to prover queries,
 and can then ask for e.g. the value of a storage slot at a certain address or the root hash of a Merkle tree.
