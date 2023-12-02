@@ -41,6 +41,6 @@ However, if we want the instruction to accept any write register as input, we us
 
 ## Read-only registers
 
-Read-only registers are used for function inputs. However, powdr creates them automatically based on functions arguments, so that they do not need to be declared explicitly.
+Read-only registers are used for function inputs. However, powdr creates them automatically based on function arguments, so that they do not need to be declared explicitly.
 
 > Read-only registers are only mentioned for completeness here and are currently only used inside the compiler. We advise against using them.
