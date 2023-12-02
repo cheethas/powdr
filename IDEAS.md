@@ -1,7 +1,7 @@
 ## Ideas
 
 This is a random list of ideas that help designing the language.
-Most if this is heavily inspired by zkASM / PIL of the polygon/hermez team.
+Most of this is heavily inspired by zkASM / PIL of the polygon/hermez team.
 
 Main goal: Everything is written in the same language, if possible not even spread across multiple files.
 
@@ -25,7 +25,7 @@ pol constant OVERFLOW(i) { (A[i] + B[i]) >> 16 };
 By just declaring A and B to be of type u16, it might not be needed to define them?
 There should be a way to create a "cross product" of constants somehow, so that the definition of A and B
 above is trivial.
-This could also help to combine two lookps into one.
+This could also help to combine two lookups into one.
 
 #### Cross-Product Brainstorming
 
@@ -103,7 +103,7 @@ compiler that the system is not underconstrained.
 
 ### Post-conditions
 
-Similarly, in (2), users should also show when the combintation of lookups have
+Similarly, in (2), users should also show when the combination of lookups have
 certain properties.
 
 
