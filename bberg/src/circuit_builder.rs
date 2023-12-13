@@ -79,7 +79,7 @@ impl CircuitBuilder for BBFiles {
             |name: &String| format!("polys.{name}_shift = Polynomial(polys.{name}.shifted());");
         let check_circuit_transformation = |relation_name: &String| {
             format!(
-                    "if (!evaluate_relation.template operator()<{name}_vm::{relation_name}<FF>>(\"{relation_name}\", {name}_vm::get_relation_label)) {{
+                    "if (!evaluate_relation.template operator()<{name}_vm::{relation_name}<FF>>(\"{relation_name}\", {name}_vm::get_relation_label_{relation_name})) {{
                         return false;
                     }}",
                     name = name,

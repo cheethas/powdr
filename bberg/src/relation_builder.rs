@@ -102,7 +102,7 @@ impl RelationBuilder for BBFiles {
             // Aggregate all rows
             all_rows.insert(relation_name.to_owned(), row_type.clone());
 
-            let labels_lookup = create_relation_labels(expression_labels);
+            let labels_lookup = create_relation_labels(&relation_name, expression_labels);
             self.create_relation(
                 file_name,
                 relation_name,
@@ -462,7 +462,7 @@ pub(crate) fn create_identities<F: FieldElement>(
 ///
 /// Note: this mapping will never be that big, so we are quite naive in implementation
 /// It should be able to be called from else where with relation_name::get_relation_label
-fn create_relation_labels(labels: HashMap<usize, String>) -> String {
+fn create_relation_labels(relation_name: &str, labels: HashMap<usize, String>) -> String {
     let label_transformation = |(index, label)| {
         format!(
             "case {index}:
@@ -479,7 +479,7 @@ fn create_relation_labels(labels: HashMap<usize, String>) -> String {
 
     format!(
         "
-    std::string get_relation_label(int index) {{
+    std::string get_relation_label_{relation_name}(int index) {{
         switch (index) {{
             {switch_statement}
         }}
