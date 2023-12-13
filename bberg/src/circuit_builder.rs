@@ -220,7 +220,7 @@ fn get_permutation_check_closure() -> String {
                 }
                 for (auto r : permutation_result) {
                     if (r != 0) {
-                        info(\"Tuple\", permutation_name, \"failed.\");
+                        info(\"Tuple \", permutation_name, \" failed.\");
                         return false;
                     }
                 }
