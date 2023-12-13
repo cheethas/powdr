@@ -58,6 +58,7 @@ pub trait RelationBuilder {
         sub_relations: &[String],
         identities: &[BBIdentity],
         row_type: &str,
+        labels_lookup: String
     );
 
     /// Declare views
@@ -85,14 +86,28 @@ impl RelationBuilder for BBFiles {
 
         // ----------------------- Create the relation files -----------------------
         for (relation_name, analyzed_idents) in grouped_relations.iter() {
-            let (subrelations, identities, collected_polys, collected_shifts) =
-                create_identities(file_name, analyzed_idents);
+            let IdentitiesOutput {
+                subrelations, 
+                identities, 
+                collected_cols, 
+                collected_shifts, 
+                expression_labels
+            } = create_identities(file_name, analyzed_idents);
+
+
+
+            // How to create the labels lookup?
+            // We want to store an enum from name to index in the relation file
+            // Inside check circuit we can then query this auto generated lookup to get the exact name of the 
+            // failing relation
+            let labels_lookup = create_relation_labels(expression_labels);
+
 
             shifted_polys.extend(collected_shifts);
 
             // let all_cols_with_shifts = combine_cols(collected_polys, collected_shifts);
             // TODO: This can probably be moved into the create_identities function
-            let row_type = create_row_type(&capitalize(relation_name), &collected_polys);
+            let row_type = create_row_type(&capitalize(relation_name), &collected_cols);
 
             all_rows.insert(relation_name.to_owned(), row_type.clone());
 
@@ -102,6 +117,7 @@ impl RelationBuilder for BBFiles {
                 &subrelations,
                 &identities,
                 &row_type,
+                labels_lookup
             );
         }
 
@@ -118,6 +134,7 @@ impl RelationBuilder for BBFiles {
         sub_relations: &[String],
         identities: &[BBIdentity],
         row_type: &str,
+        labels_lookup: String,
     ) {
         let includes = relation_includes();
         let class_boilerplate = relation_class_boilerplate(name, sub_relations, identities);
@@ -128,6 +145,8 @@ impl RelationBuilder for BBFiles {
 namespace proof_system::{root_name}_vm {{
 
 {row_type};
+
+{labels_lookup}
 
 {class_boilerplate}
 
@@ -362,34 +381,53 @@ fn craft_expression<T: FieldElement>(
     }
 }
 
+
+pub struct IdentitiesOutput {
+    subrelations: Vec<String>,
+    identities: Vec<BBIdentity>,
+    collected_cols: Vec<String>,
+    collected_shifts: Vec<String>,
+    expression_labels: HashMap<usize, String>,
+}
+
 pub(crate) fn create_identities<F: FieldElement>(
     file_name: &str,
     identities: &[Identity<Expression<F>>],
-) -> (Vec<String>, Vec<BBIdentity>, Vec<String>, Vec<String>) {
+) -> IdentitiesOutput {
     // We only want the expressions for now
     // When we have a poly type, we only need the left side of it
-    let expressions = identities
+    let ids = identities
         .iter()
         .filter_map(|identity| {
             if identity.kind == IdentityKind::Polynomial {
-                Some(identity.left.clone())
+                Some(identity)
             } else {
                 None
             }
         })
         .collect::<Vec<_>>();
 
+
     let mut identities = Vec::new();
     let mut subrelations = Vec::new();
+    let mut expression_labels: HashMap<usize, String> = HashMap::new(); // Each relation can be given a label, this label can be assigned here
     let mut collected_cols: HashSet<String> = HashSet::new();
     let mut collected_public_identities: HashSet<String> = HashSet::new();
 
+    // Collect labels for each identity
+    // TODO: shite
+    for (i, id) in ids.iter().enumerate() {
+        if let Some(label) = &id.attribute {
+            expression_labels.insert(i, label.clone());
+        }
+    }
+
+    let expressions = ids.iter().map(|id| id.left.clone()).collect::<Vec<_>>();
     for (i, expression) in expressions.iter().enumerate() {
         let relation_boilerplate = format!(
             "{file_name}_DECLARE_VIEWS({i});
         ",
         );
-        // TODO: deal with unwrap
 
         // TODO: collected pattern is shit
         let mut identity = create_identity(
@@ -424,6 +462,33 @@ pub(crate) fn create_identities<F: FieldElement>(
         })
         .collect();
 
-    // Returning both for now
-    (subrelations, identities, collected_cols, collected_shifts)
+    IdentitiesOutput {
+        subrelations, identities, collected_cols, collected_shifts, expression_labels
+    }
+}
+
+/// Relation labels
+/// 
+/// To view relation labels we create a sparse switch that contains all of the collected labels
+/// Whenever there is a failure, we can lookup into this mapping
+/// 
+/// Note: this mapping will never be that big, so we are quite naive in implementation
+/// It should be able to be called from else where with relation_name::get_relation_label
+fn create_relation_labels(labels: HashMap<usize, String>) -> String {
+    let label_transformation = |(index, label)| format!(
+        "case {index}:
+            return \"{label}\";
+        ");
+    
+    let switch_statement: String = labels.into_iter().map(label_transformation).collect::<Vec<String>>().join("\n");
+
+    format!("
+    std::string get_relation_label(int index) {{
+        switch (index) {{
+            {switch_statement}
+        }}
+        return std::to_string(index);
+    }}
+    ")
+
 }
