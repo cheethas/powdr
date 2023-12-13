@@ -58,7 +58,7 @@ pub trait RelationBuilder {
         sub_relations: &[String],
         identities: &[BBIdentity],
         row_type: &str,
-        labels_lookup: String
+        labels_lookup: String,
     );
 
     /// Declare views
@@ -87,37 +87,29 @@ impl RelationBuilder for BBFiles {
         // ----------------------- Create the relation files -----------------------
         for (relation_name, analyzed_idents) in grouped_relations.iter() {
             let IdentitiesOutput {
-                subrelations, 
-                identities, 
-                collected_cols, 
-                collected_shifts, 
-                expression_labels
+                subrelations,
+                identities,
+                collected_cols,
+                collected_shifts,
+                expression_labels,
             } = create_identities(file_name, analyzed_idents);
 
-
-
-            // How to create the labels lookup?
-            // We want to store an enum from name to index in the relation file
-            // Inside check circuit we can then query this auto generated lookup to get the exact name of the 
-            // failing relation
-            let labels_lookup = create_relation_labels(expression_labels);
-
-
-            shifted_polys.extend(collected_shifts);
-
-            // let all_cols_with_shifts = combine_cols(collected_polys, collected_shifts);
             // TODO: This can probably be moved into the create_identities function
             let row_type = create_row_type(&capitalize(relation_name), &collected_cols);
 
+            // Aggregate all shifted polys
+            shifted_polys.extend(collected_shifts);
+            // Aggregate all rows
             all_rows.insert(relation_name.to_owned(), row_type.clone());
 
+            let labels_lookup = create_relation_labels(expression_labels);
             self.create_relation(
                 file_name,
                 relation_name,
                 &subrelations,
                 &identities,
                 &row_type,
-                labels_lookup
+                labels_lookup,
             );
         }
 
@@ -381,7 +373,6 @@ fn craft_expression<T: FieldElement>(
     }
 }
 
-
 pub struct IdentitiesOutput {
     subrelations: Vec<String>,
     identities: Vec<BBIdentity>,
@@ -398,15 +389,8 @@ pub(crate) fn create_identities<F: FieldElement>(
     // When we have a poly type, we only need the left side of it
     let ids = identities
         .iter()
-        .filter_map(|identity| {
-            if identity.kind == IdentityKind::Polynomial {
-                Some(identity)
-            } else {
-                None
-            }
-        })
+        .filter(|identity| identity.kind == IdentityKind::Polynomial)
         .collect::<Vec<_>>();
-
 
     let mut identities = Vec::new();
     let mut subrelations = Vec::new();
@@ -463,32 +447,44 @@ pub(crate) fn create_identities<F: FieldElement>(
         .collect();
 
     IdentitiesOutput {
-        subrelations, identities, collected_cols, collected_shifts, expression_labels
+        subrelations,
+        identities,
+        collected_cols,
+        collected_shifts,
+        expression_labels,
     }
 }
 
 /// Relation labels
-/// 
+///
 /// To view relation labels we create a sparse switch that contains all of the collected labels
 /// Whenever there is a failure, we can lookup into this mapping
-/// 
+///
 /// Note: this mapping will never be that big, so we are quite naive in implementation
 /// It should be able to be called from else where with relation_name::get_relation_label
 fn create_relation_labels(labels: HashMap<usize, String>) -> String {
-    let label_transformation = |(index, label)| format!(
-        "case {index}:
+    let label_transformation = |(index, label)| {
+        format!(
+            "case {index}:
             return \"{label}\";
-        ");
-    
-    let switch_statement: String = labels.into_iter().map(label_transformation).collect::<Vec<String>>().join("\n");
+        "
+        )
+    };
 
-    format!("
+    let switch_statement: String = labels
+        .into_iter()
+        .map(label_transformation)
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    format!(
+        "
     std::string get_relation_label(int index) {{
         switch (index) {{
             {switch_statement}
         }}
         return std::to_string(index);
     }}
-    ")
-
+    "
+    )
 }

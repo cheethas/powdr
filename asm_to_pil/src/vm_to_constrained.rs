@@ -155,7 +155,11 @@ impl<T: FieldElement> ASMPILConverter<T> {
                             ReadOnly => {
                                 let not_reset: Expression<T> =
                                     Expression::from(T::one()) - direct_reference("instr__reset");
-                                vec![PilStatement::PolynomialIdentity(0, None, not_reset * (lhs - rhs))]
+                                vec![PilStatement::PolynomialIdentity(
+                                    0,
+                                    None,
+                                    not_reset * (lhs - rhs),
+                                )]
                             }
                             _ => {
                                 vec![PilStatement::PolynomialIdentity(0, None, lhs - rhs)]
