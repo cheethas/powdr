@@ -102,7 +102,7 @@ impl RelationBuilder for BBFiles {
             // Aggregate all rows
             all_rows.insert(relation_name.to_owned(), row_type.clone());
 
-            let labels_lookup = create_relation_labels(&relation_name, expression_labels);
+            let labels_lookup = create_relation_labels(relation_name, expression_labels);
             self.create_relation(
                 file_name,
                 relation_name,
@@ -479,7 +479,7 @@ fn create_relation_labels(relation_name: &str, labels: HashMap<usize, String>) -
 
     format!(
         "
-    std::string get_relation_label_{relation_name}(int index) {{
+    inline std::string get_relation_label_{relation_name}(int index) {{
         switch (index) {{
             {switch_statement}
         }}
