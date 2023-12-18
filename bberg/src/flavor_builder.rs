@@ -359,7 +359,6 @@ fn create_proving_and_verification_key(to_be_shifted: &[String]) -> String {
 
 fn create_polynomial_views(first_poly: &String) -> String {
     format!("
-    using ProverPolynomials = AllEntities<PolynomialHandle>;
 
     using FoldedPolynomials = AllEntities<std::vector<FF>>;
 
