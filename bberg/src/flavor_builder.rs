@@ -568,4 +568,3 @@ fn generate_transcript(witness: &[String]) -> String {
     }};
     ")
 }
-
