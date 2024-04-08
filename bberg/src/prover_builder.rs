@@ -4,7 +4,12 @@ use crate::utils::{map_with_newline, snake_case};
 pub trait ProverBuilder {
     fn create_prover_hpp(&mut self, name: &str);
 
-    fn create_prover_cpp(&mut self, name: &str, commitment_polys: &[String], lookup_names: &[String]);
+    fn create_prover_cpp(
+        &mut self,
+        name: &str,
+        commitment_polys: &[String],
+        lookup_names: &[String],
+    );
 }
 
 impl ProverBuilder for BBFiles {
@@ -75,9 +80,14 @@ impl ProverBuilder for BBFiles {
     }
 
     /// Create the prover cpp file
-    /// 
+    ///
     /// Committed polys are included as we manually unroll all commitments, as we do not commit to everything
-    fn create_prover_cpp(&mut self, name: &str, commitment_polys: &[String], lookup_names: &[String]) {
+    fn create_prover_cpp(
+        &mut self,
+        name: &str,
+        commitment_polys: &[String],
+        lookup_names: &[String],
+    ) {
         let include_str = includes_cpp(&snake_case(name));
 
         let polynomial_commitment_phase = create_commitments_phase(commitment_polys);
@@ -259,14 +269,14 @@ fn includes_cpp(name: &str) -> String {
 }
 
 /// Commitment Transform
-/// 
+///
 /// Produces code to perform kzg commitment, then stores in the witness_commitments struct
 fn commitment_transform(name: &String) -> String {
     format!("witness_commitments.{name} = commitment_key->commit(key->{name});")
-} 
+}
 
 /// Send to Verifier Transform
-/// 
+///
 /// Sends commitment produces in commitment_transform to the verifier
 fn send_to_verifier_transform(name: &String) -> String {
     format!("transcript->send_to_verifier(commitment_labels.{name}, witness_commitments.{name});")
@@ -274,7 +284,8 @@ fn send_to_verifier_transform(name: &String) -> String {
 
 fn create_commitments_phase(polys_to_commit_to: &[String]) -> String {
     let all_commit_operations = map_with_newline(polys_to_commit_to, commitment_transform);
-    let send_to_verifier_operations = map_with_newline(polys_to_commit_to, send_to_verifier_transform);
+    let send_to_verifier_operations =
+        map_with_newline(polys_to_commit_to, send_to_verifier_transform);
 
     format!(
         "
@@ -289,7 +300,8 @@ fn create_commitments_phase(polys_to_commit_to: &[String]) -> String {
 
 fn create_log_derivative_inverse_round(lookup_operations: &[String]) -> String {
     let all_commit_operations = map_with_newline(lookup_operations, commitment_transform);
-    let send_to_verifier_operations = map_with_newline(lookup_operations, send_to_verifier_transform);
+    let send_to_verifier_operations =
+        map_with_newline(lookup_operations, send_to_verifier_transform);
 
     format!(
         "

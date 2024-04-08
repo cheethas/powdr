@@ -21,7 +21,6 @@ impl VerifierBuilder for BBFiles {
         // TODO: make sure the inverse commitments are not included
         let wire_commitments = map_with_newline(witness, wire_transformation);
         let inverse_commitments = map_with_newline(inverses, wire_transformation);
-        
 
         let ver_cpp = format!("
 {include_str} 

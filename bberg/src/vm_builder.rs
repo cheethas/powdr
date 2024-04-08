@@ -174,15 +174,19 @@ fn get_all_col_names<F: FieldElement>(
 
     // Group columns by properties
     let shifted = transform_map(to_be_shifted, append_shift);
-    let all_cols_without_inverses : Vec<String> = flatten(&[fixed_names.clone(), witnesses_without_inverses.clone()]);
+    let all_cols_without_inverses: Vec<String> =
+        flatten(&[fixed_names.clone(), witnesses_without_inverses.clone()]);
     let all_cols: Vec<String> = flatten(&[fixed_names.clone(), witnesses_with_inverses.clone()]);
     let unshifted: Vec<String> = flatten(&[fixed_names.clone(), witnesses_with_inverses.clone()])
         .into_iter()
         .filter(|name| !shifted.contains(name))
         .collect();
 
-    let all_cols_with_shifts: Vec<String> =
-        flatten(&[fixed_names.clone(), witnesses_with_inverses.clone(), shifted.clone()]);
+    let all_cols_with_shifts: Vec<String> = flatten(&[
+        fixed_names.clone(),
+        witnesses_with_inverses.clone(),
+        shifted.clone(),
+    ]);
 
     ColumnGroups {
         fixed: fixed_names,

@@ -99,7 +99,8 @@ impl CircuitBuilder for BBFiles {
         };
 
         // Apply transformations
-        let compute_polys_assignemnt = map_with_newline(all_cols_without_inverses, compute_polys_transformation);
+        let compute_polys_assignemnt =
+            map_with_newline(all_cols_without_inverses, compute_polys_transformation);
         let all_poly_shifts = map_with_newline(to_be_shifted, all_polys_transformation);
         let check_circuit_for_each_relation =
             map_with_newline(relations, check_circuit_transformation);
