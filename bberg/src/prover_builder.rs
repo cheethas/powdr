@@ -77,7 +77,6 @@ impl ProverBuilder for BBFiles {
     /// Create the prover cpp file
     /// 
     /// Committed polys are included as we manually unroll all commitments, as we do not commit to everything
-    /// TODO: could this be placed with another flavor method that returns the correct phases? 
     fn create_prover_cpp(&mut self, name: &str, commitment_polys: &[String], lookup_names: &[String]) {
         let include_str = includes_cpp(&snake_case(name));
 
@@ -259,11 +258,16 @@ fn includes_cpp(name: &str) -> String {
     )
 }
 
-// TODO: label
+/// Commitment Transform
+/// 
+/// Produces code to perform kzg commitment, then stores in the witness_commitments struct
 fn commitment_transform(name: &String) -> String {
     format!("witness_commitments.{name} = commitment_key->commit(key->{name});")
 } 
 
+/// Send to Verifier Transform
+/// 
+/// Sends commitment produces in commitment_transform to the verifier
 fn send_to_verifier_transform(name: &String) -> String {
     format!("transcript->send_to_verifier(commitment_labels.{name}, witness_commitments.{name});")
 }

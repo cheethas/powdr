@@ -159,7 +159,6 @@ fn create_relations_tuple(master_name: &str, relation_file_names: &[String]) -> 
 
 /// Creates comma separated relations tuple file
 /// TODO(md): maybe need the filename in here too if we scope these
-/// TOOD: both this and below could maybe be removed as we are peeking the inverses into a list above
 fn create_permutations_tuple(permutations: &[Permutation]) -> String {
     permutations
         .iter()
@@ -168,7 +167,6 @@ fn create_permutations_tuple(permutations: &[Permutation]) -> String {
         .join(", ")
 }
 
-// TODO: could unify with above???
 fn create_lookups_tuple(lookups: &[Lookup]) -> String {
     lookups
         .iter()
@@ -216,8 +214,6 @@ fn create_relation_definitions(
     let comma_sep_perms: String = create_permutations_tuple(permutations);
     let comma_sep_lookups: String = create_lookups_tuple(lookups);
     
-    
-    // TODO: clean below - do empty check
     let mut grand_product_relations = String::new();
     let mut all_relations = comma_sep_relations.to_string();
     if !permutations.is_empty() {
@@ -511,9 +507,7 @@ fn create_commitment_labels(all_ents: &[String]) -> String {
     )
 }
 
-// TODO: clean 
 fn create_compute_logderivative_inverses(flavor_name: &str, permutations: &[Permutation], lookups: &[Lookup]) -> String{ 
-    // TODO: clean
     let mut all_perm_and_lookups = Vec::new();
     all_perm_and_lookups.extend(permutations.iter().map(|perm| perm.attribute.clone().unwrap()));
     all_perm_and_lookups.extend(lookups.iter().map(|lookup| lookup.attribute.clone().unwrap()));
