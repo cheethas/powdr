@@ -29,6 +29,8 @@ struct ColumnGroups {
     fixed: Vec<String>,
     /// witness or commit columns in pil -> will be found in proof
     witness: Vec<String>,
+    /// witness or commit columns in pil, with out the inverse columns
+    witnesses_without_inverses: Vec<String>,
     /// fixed + witness columns without lookup inverses
     all_cols_without_inverses: Vec<String>,
     /// fixed + witness columns with lookup inverses
@@ -87,6 +89,7 @@ pub(crate) fn analyzed_to_cpp<F: FieldElement>(
     let ColumnGroups {
         fixed,
         witness,
+        witnesses_without_inverses,
         all_cols,
         all_cols_without_inverses,
         unshifted: _unshifted,
@@ -113,7 +116,8 @@ pub(crate) fn analyzed_to_cpp<F: FieldElement>(
     bb_files.create_flavor_hpp(
         file_name,
         &relations,
-        &permutations,
+        &permutations, // TODO: could be replaced with strings?
+        &lookups,
         &fixed,
         &witness,
         &all_cols,
@@ -127,11 +131,11 @@ pub(crate) fn analyzed_to_cpp<F: FieldElement>(
     bb_files.create_composer_hpp(file_name);
 
     // ----------------------- Create the Verifier files -----------------------
-    bb_files.create_verifier_cpp(file_name, &witness);
+    bb_files.create_verifier_cpp(file_name, &witnesses_without_inverses, &inverses);
     bb_files.create_verifier_hpp(file_name);
 
     // ----------------------- Create the Prover files -----------------------
-    bb_files.create_prover_cpp(file_name);
+    bb_files.create_prover_cpp(file_name, &witnesses_without_inverses, &inverses);
     bb_files.create_prover_hpp(file_name);
 }
 
@@ -165,25 +169,26 @@ fn get_all_col_names<F: FieldElement>(
     let witness_names = collect_col(witness, sanitize);
 
     let inverses = flatten(&[perm_inverses, lookup_inverses]);
-    let witness_names_without_inverses = flatten(&[witness_names.clone(), lookup_counts.clone()]);
-    let witness_names_with_inverses = flatten(&[witness_names, inverses.clone(), lookup_counts]);
+    let witnesses_without_inverses = flatten(&[witness_names.clone(), lookup_counts.clone()]);
+    let witnesses_with_inverses = flatten(&[witness_names, inverses.clone(), lookup_counts]);
 
     // Group columns by properties
     let shifted = transform_map(to_be_shifted, append_shift);
-    let all_cols_without_inverses : Vec<String> = flatten(&[fixed_names.clone(), witness_names_without_inverses.clone()]);
-    let all_cols: Vec<String> = flatten(&[fixed_names.clone(), witness_names_with_inverses.clone()]);
-    let unshifted: Vec<String> = flatten(&[fixed_names.clone(), witness_names_with_inverses.clone()])
+    let all_cols_without_inverses : Vec<String> = flatten(&[fixed_names.clone(), witnesses_without_inverses.clone()]);
+    let all_cols: Vec<String> = flatten(&[fixed_names.clone(), witnesses_with_inverses.clone()]);
+    let unshifted: Vec<String> = flatten(&[fixed_names.clone(), witnesses_with_inverses.clone()])
         .into_iter()
         .filter(|name| !shifted.contains(name))
         .collect();
 
     let all_cols_with_shifts: Vec<String> =
-        flatten(&[fixed_names.clone(), witness_names_with_inverses.clone(), shifted.clone()]);
+        flatten(&[fixed_names.clone(), witnesses_with_inverses.clone(), shifted.clone()]);
 
     ColumnGroups {
         fixed: fixed_names,
-        witness: witness_names_with_inverses,
+        witness: witnesses_with_inverses,
         all_cols_without_inverses,
+        witnesses_without_inverses,
         all_cols,
         unshifted,
         to_be_shifted: to_be_shifted.to_vec(),

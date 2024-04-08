@@ -1,7 +1,5 @@
 use crate::{
-    file_writer::BBFiles,
-    permutation_builder::{get_inverses_from_permutations, Permutation},
-    utils::{get_relations_imports, map_with_newline, snake_case},
+    file_writer::BBFiles, lookup_builder::{get_inverses_from_lookups, Lookup}, permutation_builder::{get_inverses_from_permutations, Permutation}, utils::{get_relations_imports, map_with_newline, snake_case}
 };
 
 pub trait FlavorBuilder {
@@ -11,6 +9,7 @@ pub trait FlavorBuilder {
         name: &str,
         relation_file_names: &[String],
         permutations: &[Permutation],
+        lookups: &[Lookup],
         fixed: &[String],
         witness: &[String],
         all_cols: &[String],
@@ -27,6 +26,7 @@ impl FlavorBuilder for BBFiles {
         name: &str,
         relation_file_names: &[String],
         permutations: &[Permutation],
+        lookups: &[Lookup],
         fixed: &[String],
         witness: &[String],
         all_cols: &[String],
@@ -35,7 +35,15 @@ impl FlavorBuilder for BBFiles {
         all_cols_and_shifts: &[String],
     ) {
         // TODO: move elsewhere and rename
-        let inverses = get_inverses_from_permutations(permutations);
+        let permutation_inverses = get_inverses_from_permutations(permutations);
+        let lookup_inverses = get_inverses_from_lookups(lookups);
+        
+        // Inverses from both permutations and lookups
+        let inverses: Vec<String> = permutation_inverses
+            .iter()
+            .chain(lookup_inverses.iter())
+            .map(|inv| inv.clone())
+            .collect();
 
         let first_poly = &witness[0];
         let includes = flavor_includes(&snake_case(name), relation_file_names, &inverses);
@@ -46,7 +54,7 @@ impl FlavorBuilder for BBFiles {
         // Top of file boilerplate
         let class_aliases = create_class_aliases();
         let relation_definitions =
-            create_relation_definitions(name, relation_file_names, permutations);
+            create_relation_definitions(name, relation_file_names, permutations, lookups);
         let container_size_definitions =
             container_size_definitions(num_precomputed, num_witness, num_all);
 
@@ -56,7 +64,7 @@ impl FlavorBuilder for BBFiles {
         let all_entities =
             create_all_entities(all_cols, to_be_shifted, shifted, all_cols_and_shifts);
 
-        let proving_and_verification_key = create_proving_and_verification_key(to_be_shifted);
+        let proving_and_verification_key = create_proving_and_verification_key(name, permutations, lookups,to_be_shifted);
         let polynomial_views = create_polynomial_views(first_poly);
 
         let commitment_labels_class = create_commitment_labels(all_cols);
@@ -151,10 +159,20 @@ fn create_relations_tuple(master_name: &str, relation_file_names: &[String]) -> 
 
 /// Creates comma separated relations tuple file
 /// TODO(md): maybe need the filename in here too if we scope these
+/// TOOD: both this and below could maybe be removed as we are peeking the inverses into a list above
 fn create_permutations_tuple(permutations: &[Permutation]) -> String {
     permutations
         .iter()
         .map(|perm| format!("{}_relation<FF>", perm.attribute.clone().unwrap()))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+// TODO: could unify with above???
+fn create_lookups_tuple(lookups: &[Lookup]) -> String {
+    lookups
+        .iter()
+        .map(|lookup| format!("{}_relation<FF>", lookup.attribute.clone().unwrap()))
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -191,16 +209,30 @@ fn create_relation_definitions(
     name: &str,
     relation_file_names: &[String],
     permutations: &[Permutation],
+    lookups: &[Lookup],
 ) -> String {
     // Relations tuple = ns::relation_name_0, ns::relation_name_1, ... ns::relation_name_n (comma speratated)
     let comma_sep_relations = create_relations_tuple(name, relation_file_names);
     let comma_sep_perms: String = create_permutations_tuple(permutations);
+    let comma_sep_lookups: String = create_lookups_tuple(lookups);
+    
+    
+    // TODO: clean below - do empty check
+    let mut grand_product_relations = String::new();
     let mut all_relations = comma_sep_relations.to_string();
     if !permutations.is_empty() {
         all_relations = all_relations + &format!(", {comma_sep_perms}");
+        grand_product_relations = grand_product_relations + &format!("{comma_sep_perms}");
+    }
+
+    if !lookups.is_empty() {
+        all_relations = all_relations + &format!(", {comma_sep_lookups}");
+        grand_product_relations = grand_product_relations.to_owned() + &format!(", {comma_sep_lookups}");
     }
 
     format!("
+        using GrandProductRelations = std::tuple<{grand_product_relations}>;
+
         using Relations = std::tuple<{all_relations}>;
 
         static constexpr size_t MAX_PARTIAL_RELATION_LENGTH = compute_max_partial_relation_length<Relations>();
@@ -209,7 +241,7 @@ fn create_relation_definitions(
         // random polynomial e.g. For \\sum(x) [A(x) * B(x) + C(x)] * PowZeta(X), relation length = 2 and random relation
         // length = 3
         static constexpr size_t BATCHED_RELATION_PARTIAL_LENGTH = MAX_PARTIAL_RELATION_LENGTH + 1;
-        static constexpr size_t NUM_RELATIONS = std::tuple_size<Relations>::value;
+        static constexpr size_t NUM_RELATIONS = std::tuple_size_v<Relations>;
 
         template <size_t NUM_INSTANCES>
         using ProtogalaxyTupleOfTuplesOfUnivariates =
@@ -284,7 +316,6 @@ fn create_witness_entities(witness: &[String]) -> String {
     let pointer_view = create_flavor_members(witness);
 
     let wires = return_ref_vector("get_wires", witness);
-    let sorted_polys = return_ref_vector("get_sorted_polynomials", &[]);
 
     format!(
         "
@@ -295,7 +326,6 @@ fn create_witness_entities(witness: &[String]) -> String {
             {pointer_view}
 
             {wires} 
-            {sorted_polys} 
         }};
         "
     )
@@ -333,8 +363,9 @@ fn create_all_entities(
     )
 }
 
-fn create_proving_and_verification_key(to_be_shifted: &[String]) -> String {
+fn create_proving_and_verification_key(flavor_name: &str, permutations: &[Permutation], lookups: &[Lookup], to_be_shifted: &[String]) -> String {
     let get_to_be_shifted = return_ref_vector("get_to_be_shifted", to_be_shifted);
+    let compute_logderivative_inverses = create_compute_logderivative_inverses(flavor_name, permutations, lookups);
 
     format!("
         public:
@@ -346,8 +377,7 @@ fn create_proving_and_verification_key(to_be_shifted: &[String]) -> String {
 
             {get_to_be_shifted}
 
-            // The plookup wires that store plookup read data.
-            std::array<PolynomialHandle, 0> get_table_column_wires() {{ return {{}}; }};
+            {compute_logderivative_inverses}
         }};
 
         using VerificationKey = VerificationKey_<PrecomputedEntities<Commitment>, VerifierCommitmentKey>;
@@ -377,6 +407,19 @@ fn create_polynomial_views(first_poly: &String) -> String {
         ProverPolynomials(ProverPolynomials&& o) noexcept = default;
         ProverPolynomials& operator=(ProverPolynomials&& o) noexcept = default;
         ~ProverPolynomials() = default;
+        
+        ProverPolynomials(ProvingKey& proving_key)
+        {{
+            for (auto [prover_poly, key_poly] : zip_view(this->get_unshifted(), proving_key.get_all())) {{
+                ASSERT(flavor_get_label(*this, prover_poly) == flavor_get_label(proving_key, key_poly));
+                prover_poly = key_poly.share();
+            }}
+            for (auto [prover_poly, key_poly] : zip_view(this->get_shifted(), proving_key.get_to_be_shifted())) {{
+                ASSERT(flavor_get_label(*this, prover_poly) == (flavor_get_label(proving_key, key_poly) + \"_shift\"));
+                prover_poly = key_poly.shifted();
+            }}
+        }}
+
         [[nodiscard]] size_t get_polynomial_size() const {{ return {first_poly}.size(); }}
         /**
          * @brief Returns the evaluations of all prover polynomials at one point on the boolean hypercube, which
@@ -419,6 +462,12 @@ fn create_polynomial_views(first_poly: &String) -> String {
      */
     using ExtendedEdges = ProverUnivariates<MAX_PARTIAL_RELATION_LENGTH>;
 
+    /**
+     * @brief A container for the witness commitments.
+     *
+     */
+    using WitnessCommitments = WitnessEntities<Commitment>;
+
     ")
 }
 
@@ -452,7 +501,6 @@ fn create_commitment_labels(all_ents: &[String]) -> String {
             private:
                 using Base = AllEntities<std::string>;
 
-
             public:
                 CommitmentLabels() : AllEntities<std::string>()
             {{
@@ -461,6 +509,31 @@ fn create_commitment_labels(all_ents: &[String]) -> String {
         }};
         "
     )
+}
+
+// TODO: clean 
+fn create_compute_logderivative_inverses(flavor_name: &str, permutations: &[Permutation], lookups: &[Lookup]) -> String{ 
+    // TODO: clean
+    let mut all_perm_and_lookups = Vec::new();
+    all_perm_and_lookups.extend(permutations.iter().map(|perm| perm.attribute.clone().unwrap()));
+    all_perm_and_lookups.extend(lookups.iter().map(|lookup| lookup.attribute.clone().unwrap()));
+
+    let compute_inverse_transformation = |lookup_name: &String| format!("bb::compute_logderivative_inverse<{flavor_name}Flavor, {lookup_name}_relation<FF>>(prover_polynomials, relation_parameters, this->circuit_size);");
+
+    let compute_inverses = map_with_newline(&all_perm_and_lookups, compute_inverse_transformation);
+
+    format!(
+        "
+        void compute_logderivative_inverses(const RelationParameters<FF>& relation_parameters)
+        {{
+            ProverPolynomials prover_polynomials = ProverPolynomials(*this);
+
+            {compute_inverses}
+        }}
+        "
+
+    )
+
 }
 
 fn create_key_dereference(fixed: &[String]) -> String {
