@@ -29,7 +29,9 @@ struct ColumnGroups {
     fixed: Vec<String>,
     /// witness or commit columns in pil -> will be found in proof
     witness: Vec<String>,
-    /// fixed + witness columns
+    /// fixed + witness columns without lookup inverses
+    all_cols_without_inverses: Vec<String>,
+    /// fixed + witness columns with lookup inverses
     all_cols: Vec<String>,
     /// Columns that will not be shifted
     unshifted: Vec<String>,
@@ -86,6 +88,7 @@ pub(crate) fn analyzed_to_cpp<F: FieldElement>(
         fixed,
         witness,
         all_cols,
+        all_cols_without_inverses,
         unshifted: _unshifted,
         to_be_shifted,
         shifted,
@@ -100,6 +103,7 @@ pub(crate) fn analyzed_to_cpp<F: FieldElement>(
         file_name,
         &relations,
         &inverses,
+        &all_cols_without_inverses,
         &all_cols,
         &to_be_shifted,
         &all_cols_with_shifts,
@@ -161,22 +165,25 @@ fn get_all_col_names<F: FieldElement>(
     let witness_names = collect_col(witness, sanitize);
 
     let inverses = flatten(&[perm_inverses, lookup_inverses]);
-    let witness_names = flatten(&[witness_names, inverses.clone(), lookup_counts]);
+    let witness_names_without_inverses = flatten(&[witness_names.clone(), lookup_counts.clone()]);
+    let witness_names_with_inverses = flatten(&[witness_names, inverses.clone(), lookup_counts]);
 
     // Group columns by properties
     let shifted = transform_map(to_be_shifted, append_shift);
-    let all_cols: Vec<String> = flatten(&[fixed_names.clone(), witness_names.clone()]);
-    let unshifted: Vec<String> = flatten(&[fixed_names.clone(), witness_names.clone()])
+    let all_cols_without_inverses : Vec<String> = flatten(&[fixed_names.clone(), witness_names_without_inverses.clone()]);
+    let all_cols: Vec<String> = flatten(&[fixed_names.clone(), witness_names_with_inverses.clone()]);
+    let unshifted: Vec<String> = flatten(&[fixed_names.clone(), witness_names_with_inverses.clone()])
         .into_iter()
         .filter(|name| !shifted.contains(name))
         .collect();
 
     let all_cols_with_shifts: Vec<String> =
-        flatten(&[fixed_names.clone(), witness_names.clone(), shifted.clone()]);
+        flatten(&[fixed_names.clone(), witness_names_with_inverses.clone(), shifted.clone()]);
 
     ColumnGroups {
         fixed: fixed_names,
-        witness: witness_names,
+        witness: witness_names_with_inverses,
+        all_cols_without_inverses,
         all_cols,
         unshifted,
         to_be_shifted: to_be_shifted.to_vec(),
