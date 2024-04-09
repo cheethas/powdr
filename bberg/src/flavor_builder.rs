@@ -1,7 +1,5 @@
 use crate::{
     file_writer::BBFiles,
-    lookup_builder::{get_inverses_from_lookups, Lookup},
-    permutation_builder::{get_inverses_from_permutations, Permutation},
     utils::{get_relations_imports, map_with_newline, snake_case},
 };
 
@@ -11,8 +9,7 @@ pub trait FlavorBuilder {
         &mut self,
         name: &str,
         relation_file_names: &[String],
-        permutations: &[Permutation],
-        lookups: &[Lookup],
+        lookups: &[String],
         fixed: &[String],
         witness: &[String],
         all_cols: &[String],
@@ -28,8 +25,7 @@ impl FlavorBuilder for BBFiles {
         &mut self,
         name: &str,
         relation_file_names: &[String],
-        permutations: &[Permutation],
-        lookups: &[Lookup],
+        lookups: &[String],
         fixed: &[String],
         witness: &[String],
         all_cols: &[String],
@@ -37,19 +33,8 @@ impl FlavorBuilder for BBFiles {
         shifted: &[String],
         all_cols_and_shifts: &[String],
     ) {
-        // TODO: move elsewhere and rename
-        let permutation_inverses = get_inverses_from_permutations(permutations);
-        let lookup_inverses = get_inverses_from_lookups(lookups);
-
-        // Inverses from both permutations and lookups
-        let inverses: Vec<String> = permutation_inverses
-            .iter()
-            .chain(lookup_inverses.iter())
-            .cloned()
-            .collect();
-
         let first_poly = &witness[0];
-        let includes = flavor_includes(&snake_case(name), relation_file_names, &inverses);
+        let includes = flavor_includes(&snake_case(name), relation_file_names, &lookups);
         let num_precomputed = fixed.len();
         let num_witness = witness.len();
         let num_all = all_cols_and_shifts.len();
@@ -57,7 +42,7 @@ impl FlavorBuilder for BBFiles {
         // Top of file boilerplate
         let class_aliases = create_class_aliases();
         let relation_definitions =
-            create_relation_definitions(name, relation_file_names, permutations, lookups);
+            create_relation_definitions(name, relation_file_names, lookups);
         let container_size_definitions =
             container_size_definitions(num_precomputed, num_witness, num_all);
 
@@ -68,7 +53,7 @@ impl FlavorBuilder for BBFiles {
             create_all_entities(all_cols, to_be_shifted, shifted, all_cols_and_shifts);
 
         let proving_and_verification_key =
-            create_proving_and_verification_key(name, permutations, lookups, to_be_shifted);
+            create_proving_and_verification_key(name, lookups, to_be_shifted);
         let polynomial_views = create_polynomial_views(first_poly);
 
         let commitment_labels_class = create_commitment_labels(all_cols);
@@ -128,8 +113,8 @@ class {name}Flavor {{
 }
 
 /// Imports located at the top of the flavor files
-fn flavor_includes(name: &str, relation_file_names: &[String], permutations: &[String]) -> String {
-    let relation_imports = get_relations_imports(name, relation_file_names, permutations);
+fn flavor_includes(name: &str, relation_file_names: &[String], lookups: &[String]) -> String {
+    let relation_imports = get_relations_imports(name, relation_file_names, lookups);
 
     format!(
         "
@@ -162,21 +147,15 @@ fn create_relations_tuple(master_name: &str, relation_file_names: &[String]) -> 
 }
 
 /// Creates comma separated relations tuple file
-/// TODO(md): maybe need the filename in here too if we scope these
-fn create_permutations_tuple(permutations: &[Permutation]) -> String {
-    permutations
+fn create_lookups_tuple(lookups: &[String]) -> Option<String> {
+    if lookups.len() == 0 {
+        return None;
+    }
+    Some(lookups
         .iter()
-        .map(|perm| format!("{}_relation<FF>", perm.attribute.clone().unwrap()))
+        .map(|lookup| format!("{}_relation<FF>", lookup.clone()))
         .collect::<Vec<_>>()
-        .join(", ")
-}
-
-fn create_lookups_tuple(lookups: &[Lookup]) -> String {
-    lookups
-        .iter()
-        .map(|lookup| format!("{}_relation<FF>", lookup.attribute.clone().unwrap()))
-        .collect::<Vec<_>>()
-        .join(", ")
+        .join(", "))
 }
 
 /// Create Class Aliases
@@ -210,29 +189,22 @@ fn create_class_aliases() -> &'static str {
 fn create_relation_definitions(
     name: &str,
     relation_file_names: &[String],
-    permutations: &[Permutation],
-    lookups: &[Lookup],
+    lookups: &[String],
 ) -> String {
     // Relations tuple = ns::relation_name_0, ns::relation_name_1, ... ns::relation_name_n (comma speratated)
     let comma_sep_relations = create_relations_tuple(name, relation_file_names);
-    let comma_sep_perms: String = create_permutations_tuple(permutations);
-    let comma_sep_lookups: String = create_lookups_tuple(lookups);
+    let comma_sep_lookups: Option<String> = create_lookups_tuple(lookups);
 
+    // We only include the grand product relations if we are given lookups
     let mut grand_product_relations = String::new();
     let mut all_relations = comma_sep_relations.to_string();
-    if !permutations.is_empty() {
-        all_relations = all_relations + &format!(", {comma_sep_perms}");
-        grand_product_relations = grand_product_relations + &comma_sep_perms.to_string();
-    }
-
-    if !lookups.is_empty() {
-        all_relations = all_relations + &format!(", {comma_sep_lookups}");
-        grand_product_relations =
-            grand_product_relations.to_owned() + &format!(", {comma_sep_lookups}");
+    if let Some(lookups)  = comma_sep_lookups{
+        all_relations = all_relations + &format!(", {lookups}");
+        grand_product_relations = format!("using GrandProductRelations = std::tuple<{lookups}>;");
     }
 
     format!("
-        using GrandProductRelations = std::tuple<{grand_product_relations}>;
+        {grand_product_relations}
 
         using Relations = std::tuple<{all_relations}>;
 
@@ -366,13 +338,12 @@ fn create_all_entities(
 
 fn create_proving_and_verification_key(
     flavor_name: &str,
-    permutations: &[Permutation],
-    lookups: &[Lookup],
+    lookups: &[String],
     to_be_shifted: &[String],
 ) -> String {
     let get_to_be_shifted = return_ref_vector("get_to_be_shifted", to_be_shifted);
     let compute_logderivative_inverses =
-        create_compute_logderivative_inverses(flavor_name, permutations, lookups);
+        create_compute_logderivative_inverses(flavor_name, lookups);
 
     format!("
         public:
@@ -520,26 +491,13 @@ fn create_commitment_labels(all_ents: &[String]) -> String {
 
 fn create_compute_logderivative_inverses(
     flavor_name: &str,
-    permutations: &[Permutation],
-    lookups: &[Lookup],
+    lookups: &[String],
 ) -> String {
-    let mut all_perm_and_lookups = Vec::new();
-    all_perm_and_lookups.extend(
-        permutations
-            .iter()
-            .map(|perm| perm.attribute.clone().unwrap()),
-    );
-    all_perm_and_lookups.extend(
-        lookups
-            .iter()
-            .map(|lookup| lookup.attribute.clone().unwrap()),
-    );
-
     let compute_inverse_transformation = |lookup_name: &String| {
         format!("bb::compute_logderivative_inverse<{flavor_name}Flavor, {lookup_name}_relation<FF>>(prover_polynomials, relation_parameters, this->circuit_size);")
     };
 
-    let compute_inverses = map_with_newline(&all_perm_and_lookups, compute_inverse_transformation);
+    let compute_inverses = map_with_newline(&lookups, compute_inverse_transformation);
 
     format!(
         "
@@ -661,3 +619,5 @@ fn generate_transcript(witness: &[String]) -> String {
     }};
     ")
 }
+
+

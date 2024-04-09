@@ -116,8 +116,7 @@ pub(crate) fn analyzed_to_cpp<F: FieldElement>(
     bb_files.create_flavor_hpp(
         file_name,
         &relations,
-        &permutations, // TODO: could be replaced with strings?
-        &lookups,
+        &inverses,
         &fixed,
         &witness,
         &all_cols,
