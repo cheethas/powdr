@@ -34,15 +34,14 @@ impl FlavorBuilder for BBFiles {
         all_cols_and_shifts: &[String],
     ) {
         let first_poly = &witness[0];
-        let includes = flavor_includes(&snake_case(name), relation_file_names, &lookups);
+        let includes = flavor_includes(&snake_case(name), relation_file_names, lookups);
         let num_precomputed = fixed.len();
         let num_witness = witness.len();
         let num_all = all_cols_and_shifts.len();
 
         // Top of file boilerplate
         let class_aliases = create_class_aliases();
-        let relation_definitions =
-            create_relation_definitions(name, relation_file_names, lookups);
+        let relation_definitions = create_relation_definitions(name, relation_file_names, lookups);
         let container_size_definitions =
             container_size_definitions(num_precomputed, num_witness, num_all);
 
@@ -148,14 +147,16 @@ fn create_relations_tuple(master_name: &str, relation_file_names: &[String]) -> 
 
 /// Creates comma separated relations tuple file
 fn create_lookups_tuple(lookups: &[String]) -> Option<String> {
-    if lookups.len() == 0 {
+    if lookups.is_empty() {
         return None;
     }
-    Some(lookups
-        .iter()
-        .map(|lookup| format!("{}_relation<FF>", lookup.clone()))
-        .collect::<Vec<_>>()
-        .join(", "))
+    Some(
+        lookups
+            .iter()
+            .map(|lookup| format!("{}_relation<FF>", lookup.clone()))
+            .collect::<Vec<_>>()
+            .join(", "),
+    )
 }
 
 /// Create Class Aliases
@@ -198,7 +199,7 @@ fn create_relation_definitions(
     // We only include the grand product relations if we are given lookups
     let mut grand_product_relations = String::new();
     let mut all_relations = comma_sep_relations.to_string();
-    if let Some(lookups)  = comma_sep_lookups{
+    if let Some(lookups) = comma_sep_lookups {
         all_relations = all_relations + &format!(", {lookups}");
         grand_product_relations = format!("using GrandProductRelations = std::tuple<{lookups}>;");
     }
@@ -489,15 +490,12 @@ fn create_commitment_labels(all_ents: &[String]) -> String {
     )
 }
 
-fn create_compute_logderivative_inverses(
-    flavor_name: &str,
-    lookups: &[String],
-) -> String {
+fn create_compute_logderivative_inverses(flavor_name: &str, lookups: &[String]) -> String {
     let compute_inverse_transformation = |lookup_name: &String| {
         format!("bb::compute_logderivative_inverse<{flavor_name}Flavor, {lookup_name}_relation<FF>>(prover_polynomials, relation_parameters, this->circuit_size);")
     };
 
-    let compute_inverses = map_with_newline(&lookups, compute_inverse_transformation);
+    let compute_inverses = map_with_newline(lookups, compute_inverse_transformation);
 
     format!(
         "
@@ -619,5 +617,3 @@ fn generate_transcript(witness: &[String]) -> String {
     }};
     ")
 }
-
-
