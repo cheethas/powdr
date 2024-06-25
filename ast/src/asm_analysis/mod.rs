@@ -72,7 +72,7 @@ pub struct Instruction<T> {
 #[derive(Clone, Debug)]
 pub struct LinkDefinitionStatement<T> {
     pub start: usize,
-    /// the flag which activates this link. Should be boolean.
+    /// the flag that activates this link. Should be boolean.
     pub flag: Expression<T>,
     /// the parameters to pass to the callable
     pub params: Params<T>,
