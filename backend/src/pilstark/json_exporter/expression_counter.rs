@@ -36,7 +36,7 @@ pub fn compute_intermediate_expression_ids<T>(analyzed: &Analyzed<T>) -> HashMap
 }
 
 trait ExpressionCounter {
-    /// Returns the number of (top-level) expression generated for this item.
+    /// Returns the number of (top-level) expressions generated for this item.
     fn expression_count(&self) -> usize;
 }
 
