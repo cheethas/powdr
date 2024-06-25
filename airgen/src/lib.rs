@@ -163,7 +163,7 @@ impl<'a, T: FieldElement> ASMPILConverter<'a, T> {
             flag: flag.clone(),
         };
 
-        // get the machine type name for this submachine from the submachine delcarations
+        // get the machine type name for this submachine from the submachine declarations
         let instance_ty_name = self
             .submachines
             .iter()
