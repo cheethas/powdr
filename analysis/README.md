@@ -68,11 +68,11 @@ machine DifferentSignatures {
 
 ### Type checking
 
-Type checking takes a parse tree and returns a tree of machines. The output type aims at being as strict as possible.
+Type checking takes a parse tree and returns a tree of machines. The output type aims to be as strict as possible.
 
 ### Virtual machine reduction
 
-Virtual machine reduction turns virtual machines into constrained machines. It has no effect on contrained machines.
+Virtual machine reduction turns virtual machines into constrained machines. It has no effect on constrained machines.
 
 #### Inference
 

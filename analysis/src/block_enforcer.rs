@@ -12,7 +12,7 @@ pub fn enforce<T: FieldElement>(mut file: AnalysisASMFile<T>) -> AnalysisASMFile
             let last_step = "_block_enforcer_last_step";
             let operation_id_no_change = "_operation_id_no_change";
 
-            // add the necessary embedded constraints which apply to both static and dynamic machines
+            // add the necessary embedded constraints that apply to both static and dynamic machines
             let embedded_constraints = [
                 // inject last step
                 parse_pil_statement(&format!("col constant {last_step} = [0]* + [1]")),

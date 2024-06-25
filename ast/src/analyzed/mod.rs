@@ -226,7 +226,7 @@ impl<T> Analyzed<T> {
         self.identities.push(Identity {
             id,
             kind: IdentityKind::Polynomial,
-            attribute: None, // TODO(md): None for the meantime as we do not have tagged identities, will be updated in following pr
+            attribute: None, // TODO(md): None for the meantime as we do not have tagged identities, will be updated in the following pr
             source,
             left: SelectedExpressions {
                 selector: Some(identity),
