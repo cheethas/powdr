@@ -16,7 +16,7 @@ For detailed documentation please visit [the powdr book](https://docs.powdr.org/
 It has two main components:
 
 - powdr-asm: an extensible assembly IR language to perform dynamic executions.
-- powdr-PIL: a low level constraint language that allows you to define arithmetic constraints, lookups, etc.
+- powdr-PIL: a low-level constraint language that allows you to define arithmetic constraints, lookups, etc.
   
 Both frontend and backend are highly flexible.
 
