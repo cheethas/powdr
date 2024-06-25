@@ -27,7 +27,7 @@ impl<'a, T: FieldElement> Batch<'a, T> {
         }
     }
 
-    /// Returns true iff this batch consists exclusively of labels and debug directives
+    /// Returns true if this batch consists exclusively of labels and debug directives
     fn is_only_labels_and_directives(&self) -> bool {
         self.statements.iter().all(|s| {
             matches!(
