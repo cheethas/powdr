@@ -1,7 +1,7 @@
 ## Ideas
 
 This is a random list of ideas that help designing the language.
-Most if this is heavily inspired by zkASM / PIL of the polygon/hermez team.
+Most of this is heavily inspired by zkASM / PIL of the polygon/hermez team.
 
 Main goal: Everything is written in the same language, if possible not even spread across multiple files.
 
@@ -25,7 +25,7 @@ pol constant OVERFLOW(i) { (A[i] + B[i]) >> 16 };
 By just declaring A and B to be of type u16, it might not be needed to define them?
 There should be a way to create a "cross product" of constants somehow, so that the definition of A and B
 above is trivial.
-This could also help to combine two lookps into one.
+This could also help to combine two lookups into one.
 
 #### Cross-Product Brainstorming
 
@@ -59,7 +59,7 @@ The second is `A` which has one row for each value between `0` and `2**16-1`. Th
 and `C` are identical to `A`.
 The cross-product then first constructs polynomials of size `3 * 65536 * 65536 * 65536` such that the four-tuple
 contains all combinations of rows. The function finally reduces the polynomials to size `3 * 65536 * 65536`,
-because onyl one value of `C` is valid for each `OP`-`A`-`B`-combination.
+because only one value of `C` is valid for each `OP`-`A`-`B`-combination.
 
 ### The "Polynomial" Terminology
 
@@ -103,7 +103,7 @@ compiler that the system is not underconstrained.
 
 ### Post-conditions
 
-Similarly, in (2), users should also show when the combintation of lookups have
+Similarly, in (2), users should also show when the combination of lookups have
 certain properties.
 
 
@@ -149,7 +149,7 @@ If a macro is used in statement context, it cannot have an expression and
 if it is used in expression context, it must have an expression (but can also have statements).
 
 The optimizer will of course ensure that redundant constraints are removed
-(be it because the are just duplicated or because they are already implied by lookups).
+(be it because they are just duplicated or because they are already implied by lookups).
 
 ### Instruction / Assembly language
 
