@@ -44,7 +44,7 @@ struct ColumnGroups {
     shifted: Vec<String>,
     /// fixed + witness + shifted
     all_cols_with_shifts: Vec<String>,
-    /// Inverses from lookups and permuations
+    /// Inverses from lookups and permutations
     inverses: Vec<String>,
 }
 
