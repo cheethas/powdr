@@ -382,7 +382,7 @@ impl<T: Display> Display for PilStatement<T> {
                     if let Some(n) = public {
                         format!("public : {n}")
                     } else {
-                        " ".to_string()
+                        "".to_string()
                     },
                     names.iter().format(", "),
                     value.as_ref().map(|v| format!("{v}")).unwrap_or_default(),
