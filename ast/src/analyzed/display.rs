@@ -38,7 +38,7 @@ impl<T: Display> Display for Analyzed<T> {
                                     PolynomialType::Constant => "fixed ",
                                     PolynomialType::Intermediate => panic!(),
                                 };
-                                write!(f, "    col {kind}{name}")?;
+                                write!(f, "    col{kind}{name}")?;
                                 if let Some(length) = symbol.length {
                                     write!(f, "[{length}]")?;
                                 }

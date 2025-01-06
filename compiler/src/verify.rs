@@ -32,8 +32,18 @@ pub fn verify_asm_string<T: FieldElement>(
 
     let result = result.unwrap();
     write_constants_to_fs(&result.constants, &temp_dir);
-    write_commits_to_fs(&result.witness.unwrap(), &temp_dir);
-    write_constraints_to_fs(&result.constraints_serialization.unwrap(), &temp_dir);
+
+    if let Some(witness) = result.witness {
+        write_commits_to_fs(&witness, &temp_dir);
+    } else {
+        panic!("Witness generation failed");
+    }
+
+    if let Some(constraints) = result.constraints_serialization {
+        write_constraints_to_fs(&constraints, &temp_dir);
+    } else {
+        panic!("Constraint generation failed");
+    }
 
     verify(&temp_dir);
 }

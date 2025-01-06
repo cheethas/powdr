@@ -84,7 +84,7 @@ mod test {
                         array_size: None
                     }],
                     None,
-                    false
+                    None
                 )
             ])
         );
