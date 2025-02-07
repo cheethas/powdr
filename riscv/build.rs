@@ -4,8 +4,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-extern crate lalrpop;
-
 fn main() {
     build_lalrpop();
     build_instruction_tests();
